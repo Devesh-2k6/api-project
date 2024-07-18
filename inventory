@@ -1,0 +1,97 @@
+class Product:
+    def __init__(self, product_id, name, current_stock, reorder_point, reorder_quantity):
+        """
+        Initialize a Product object.
+
+        Args:
+        - product_id (int): The unique identifier of the product.
+        - name (str): The name of the product.
+        - current_stock (int): The current stock level of the product.
+        - reorder_point (int): The threshold at which the product should be reordered.
+        - reorder_quantity (int): The quantity to reorder when stock is below reorder_point.
+        """
+        self.product_id = product_id
+        self.name = name
+        self.current_stock = current_stock
+        self.reorder_point = reorder_point
+        self.reorder_quantity = reorder_quantity
+
+class Warehouse:
+    def __init__(self, warehouse_id, location):
+        """
+        Initialize a Warehouse object.
+
+        Args:
+        - warehouse_id (int): The unique identifier of the warehouse.
+        - location (str): The location of the warehouse.
+        """
+        self.warehouse_id = warehouse_id
+        self.location = location
+        self.products = []
+
+def check_inventory(products):
+    """
+    Check inventory levels for each product in the list.
+    Print a notification if current stock is below the reorder point.
+    
+    Args:
+    - products (list): List of Product objects.
+    """
+    for product in products:
+        if product.current_stock < product.reorder_point:
+            print(f"Notice: Stock of {product.name} is below the reorder threshold. Current stock: {product.current_stock}")
+            suggest_reorder(product)
+
+def suggest_reorder(product):
+    """
+    Suggest a reorder quantity and update the stock level for a given product.
+
+    Args:
+    - product (Product): The Product object for which to suggest a reorder.
+    """
+    updated_stock = product.current_stock + product.reorder_quantity
+    print(f"Reorder recommendation for {product.name}: {product.reorder_quantity} units. Updated stock level: {updated_stock}")
+
+def main_interface():
+    """
+    Main interface for the inventory management system.
+    Allows users to interactively create products, check product details, and receive reorder recommendations.
+    """
+    warehouse_id = input("Enter warehouse ID: ")
+    warehouse_location = input("Enter warehouse location: ")
+    storage1 = Warehouse(warehouse_id, warehouse_location)
+
+    while True:
+        try:
+            product_id = int(input("Enter product ID (integer): "))
+            product_name = input("Enter product name: ")
+            current_stock = int(input("Enter current stock (integer): "))
+            reorder_point = int(input("Enter reorder point (integer): "))
+            reorder_quantity = int(input("Enter reorder quantity (integer): "))
+            item = Product(product_id, product_name, current_stock, reorder_point, reorder_quantity)
+            storage1.products.append(item)
+            print(f"Product '{product_name}' added successfully.\n")
+        except ValueError:
+            print("Invalid input. Please enter integers for product ID, current stock, reorder point, and reorder quantity.\n")
+
+        user_input = input("Enter 'check' to view inventory details or 'exit' to quit: ")
+        if user_input.lower() == "exit":
+            break
+        elif user_input.lower() == "check":
+            product_id_check = int(input("Enter product ID to check details: "))
+            found = False
+            for product in storage1.products:
+                if product.product_id == product_id_check:
+                    print(f"Product: {product.name}")
+                    print(f"Current Stock: {product.current_stock}")
+                    suggest_reorder(product)
+                    found = True
+                    break
+            if not found:
+                print("Product not found.")
+        else:
+            print("Invalid command. Please enter 'check' or 'exit'.\n")
+
+# Test the application
+if __name__ == "__main__":
+    main_interface()
