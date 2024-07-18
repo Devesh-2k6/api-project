@@ -1,0 +1,33 @@
+import requests
+
+# Function to fetch weather data from Tomorrow.io API
+def fetch_weather_data(location):
+    api_key = "4WWSJu4K0c02kD3jw7eZpyM4BUH1Yt68"
+    api_url = f"https://api.tomorrow.io/v4/weather/forecast?location={location}&apikey={api_key}"
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        return None
+
+# Function to display weather data to the user
+def display_weather_data(data):
+    if data:
+        print(f"Current Weather in {data['location']['name']}:")
+        print(f"Temperature: {data['temperature']['value']}°C")
+        print(f"Weather Conditions: {data['weather'][0]['description']}")
+        print(f"Humidity: {data['humidity']['value']}%")
+        print(f"Wind Speed: {data['wind']['speed']['value']} m/s")
+    else:
+        print("Error fetching weather data.")
+
+# Main function to handle user input and display weather data
+def main():
+    location = input("Enter city name or coordinates (lat,lon): ")
+    data = fetch_weather_data(location)
+    display_weather_data(data)
+
+# Run the main function
+if __name__ == "__main__":
+    main()
