@@ -23,7 +23,7 @@ def display_stats(stats):
         print(stats["error"])
     else:
         print("Historical COVID-19 Statistics:")
-        print("Cases:")
+        print("\nCases:")
         for date, count in stats["cases"].items():
             print(f"{date}: {count}")
         print("\nRecoveries:")
@@ -47,7 +47,7 @@ def plot_stats(stats):
     plt.title('COVID-19 Historical Statistics')
     plt.xlabel('Date')
     plt.ylabel('Count')
-    plt.xticks(dates[::int(len(dates)/10)], rotation=45)
+    plt.xticks(dates[::max(1, int(len(dates)/10))], rotation=45)  # Prevent division by zero
     plt.legend()
     plt.tight_layout()
     plt.show()
@@ -67,3 +67,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
