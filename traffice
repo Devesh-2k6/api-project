@@ -1,0 +1,88 @@
+import socket
+import time
+import json
+
+def get_user_input():
+    start_point = input("Enter starting point: ")
+    destination = input("Enter destination: ")
+    return start_point, destination
+
+def send_api_request(start_point, destination, api_key):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(("maps.googleapis.com", 443))
+        request = f"GET /maps/api/directions/json?origin={start_point}&destination={destination}&key={api_key}&traffic_model=best_guess HTTP/1.1\r\nHost: maps.googleapis.com\r\n\r\n"
+        sock.sendall(request.encode())
+        response = b""
+        while True:
+            data = sock.recv(1024)
+            if not data:
+                break
+            response += data
+        sock.close()
+
+        # Split the response into headers and body
+        response_parts = response.decode().split("\r\n\r\n", 1)
+
+        # Check the response status code
+        status_code = int(response_parts[0].split("\r\n")[0].split(" ")[1])
+        if status_code == 200:
+            return json.loads(response_parts[1])
+        else:
+            raise Exception(f"API request failed with status code {status_code}")
+    except socket.error as e:
+        raise Exception(f"Socket error: {e}")
+    except json.JSONDecodeError as e:
+        raise Exception(f"JSON decoding error: {e}")
+    except Exception as e:
+        raise Exception(f"Unexpected error: {e}")
+
+def display_traffic_data(traffic_data):
+    if "routes" in traffic_data:
+        for idx, route in enumerate(traffic_data["routes"], start=1):
+            print(f"Route {idx}:")
+            print(f"Total Distance: {route['legs'][0]['distance']['text']}")
+            print(f"Estimated Travel Time: {route['legs'][0]['duration']['text']}")
+            print("Steps:")
+            for step in route["legs"][0]["steps"]:
+                print(f"  - {step['html_instructions']}")
+                if "traffic_speed_entry" in step:
+                    print(f"    Traffic Speed: {step['traffic_speed_entry']['speed']} km/h")
+                    congestion = step['traffic_speed_entry']['congestion']
+                    congestion_level = get_congestion_level(congestion)
+                    print(f"    Congestion Level: {congestion_level}")
+                print()
+            print()
+    else:
+        print("Error: Unable to fetch traffic data.")
+
+def get_congestion_level(congestion):
+    if congestion == "heavy":
+        return "Heavy Congestion"
+    elif congestion == "moderate":
+        return "Moderate Congestion"
+    elif congestion == "low":
+        return "Low Congestion"
+    else:
+        return "Unknown"
+
+def main():
+    api_key = "YOUR_API_KEY"
+
+    while True:
+        try:
+            start_point, destination = get_user_input()
+            traffic_data = send_api_request(start_point, destination, api_key)
+            display_traffic_data(traffic_data)
+        except KeyboardInterrupt:
+            print("\nProgram terminated by user.")
+            break
+        except Exception as e:
+            print(f"Error: {e}")
+
+        print(f"Last updated: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print()
+        input("Press Enter to continue...")
+
+if __name__ == "__main__":
+    main()
