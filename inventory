@@ -1,97 +1,157 @@
-class Product:
-    def __init__(self, product_id, name, current_stock, reorder_point, reorder_quantity):
-        """
-        Initialize a Product object.
+import tkinter as tk
+from tkinter import messagebox
+import pandas as pd
+import numpy as np
 
-        Args:
-        - product_id (int): The unique identifier of the product.
-        - name (str): The name of the product.
-        - current_stock (int): The current stock level of the product.
-        - reorder_point (int): The threshold at which the product should be reordered.
-        - reorder_quantity (int): The quantity to reorder when stock is below reorder_point.
-        """
-        self.product_id = product_id
-        self.name = name
-        self.current_stock = current_stock
-        self.reorder_point = reorder_point
-        self.reorder_quantity = reorder_quantity
+class InventoryManager:
+    def __init__(self):
+        self.inventory = []
+        self.alert_messages = []
 
-class Warehouse:
-    def __init__(self, warehouse_id, location):
-        """
-        Initialize a Warehouse object.
+    def add_new_product(self, id, name, stock, reorder_level, lead_days, sales_history):
+        product = {
+            'id': id,
+            'name': name,
+            'stock': stock,
+            'reorder_level': reorder_level,
+            'lead_days': lead_days,
+            'sales_history': sales_history
+        }
+        self.inventory.append(product)
 
-        Args:
-        - warehouse_id (int): The unique identifier of the warehouse.
-        - location (str): The location of the warehouse.
-        """
-        self.warehouse_id = warehouse_id
-        self.location = location
-        self.products = []
+    def get_stock_level(self, id):
+        for item in self.inventory:
+            if item['id'] == id:
+                return item['stock']
+        return None
 
-def check_inventory(products):
-    """
-    Check inventory levels for each product in the list.
-    Print a notification if current stock is below the reorder point.
-    
-    Args:
-    - products (list): List of Product objects.
-    """
-    for product in products:
-        if product.current_stock < product.reorder_point:
-            print(f"Notice: Stock of {product.name} is below the reorder threshold. Current stock: {product.current_stock}")
-            suggest_reorder(product)
+    def generate_reorder_alerts(self):
+        self.alert_messages.clear()
+        for item in self.inventory:
+            if item['stock'] < item['reorder_level']:
+                self.alert_messages.append(f"Reorder needed for {item['name']} (ID: {item['id']})")
+        return self.alert_messages
 
-def suggest_reorder(product):
-    """
-    Suggest a reorder quantity and update the stock level for a given product.
+    def compute_reorder_levels(self):
+        for item in self.inventory:
+            avg_daily_sales = np.mean(item['sales_history'])
+            reorder_level = avg_daily_sales * item['lead_days']
+            reorder_quantity = avg_daily_sales * (item['lead_days'] + 7)
+            item['reorder_level'] = reorder_level
+            item['reorder_quantity'] = reorder_quantity
 
-    Args:
-    - product (Product): The Product object for which to suggest a reorder.
-    """
-    updated_stock = product.current_stock + product.reorder_quantity
-    print(f"Reorder recommendation for {product.name}: {product.reorder_quantity} units. Updated stock level: {updated_stock}")
+    def create_reports(self):
+        turnover = {}
+        stockout_count = 0
+        excess_costs = 0
 
-def main_interface():
-    """
-    Main interface for the inventory management system.
-    Allows users to interactively create products, check product details, and receive reorder recommendations.
-    """
-    warehouse_id = input("Enter warehouse ID: ")
-    warehouse_location = input("Enter warehouse location: ")
-    storage1 = Warehouse(warehouse_id, warehouse_location)
+        for item in self.inventory:
+            turnover[item['name']] = np.sum(item['sales_history']) / item['stock']
+            if item['stock'] < item['reorder_level']:
+                stockout_count += 1
+            if item['stock'] > 1.5 * item['reorder_level']:
+                excess_costs += item['stock'] - item['reorder_level']
 
-    while True:
+        return turnover, stockout_count, excess_costs
+
+class InventoryManagerUI:
+    instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls.instance:
+            cls.instance = super().__new__(cls)
+        return cls.instance
+
+    def __init__(self, root):
+        if hasattr(self, 'root'):
+            return
+        self.root = root
+        self.root.title("Inventory Manager System")
+
+        self.manager = InventoryManager()
+        self.setup_widgets()
+
+    def setup_widgets(self):
+        tk.Label(self.root, text="Product ID:").grid(row=0, column=0)
+        self.id_entry = tk.Entry(self.root)
+        self.id_entry.grid(row=0, column=1)
+
+        tk.Label(self.root, text="Product Name:").grid(row=1, column=0)
+        self.name_entry = tk.Entry(self.root)
+        self.name_entry.grid(row=1, column=1)
+
+        tk.Label(self.root, text="Initial Stock:").grid(row=2, column=0)
+        self.stock_entry = tk.Entry(self.root)
+        self.stock_entry.grid(row=2, column=1)
+
+        tk.Label(self.root, text="Reorder Level:").grid(row=3, column=0)
+        self.reorder_entry = tk.Entry(self.root)
+        self.reorder_entry.grid(row=3, column=1)
+
+        tk.Label(self.root, text="Lead Time (days):").grid(row=4, column=0)
+        self.lead_time_entry = tk.Entry(self.root)
+        self.lead_time_entry.grid(row=4, column=1)
+
+        tk.Label(self.root, text="Sales History (comma-separated):").grid(row=5, column=0)
+        self.sales_history_entry = tk.Entry(self.root)
+        self.sales_history_entry.grid(row=5, column=1)
+
+        tk.Button(self.root, text="Add Product", command=self.add_new_product).grid(row=6, column=0, columnspan=2, pady=10)
+        tk.Button(self.root, text="Check Stock Levels", command=self.check_stock_levels).grid(row=7, column=0, columnspan=2, pady=10)
+        tk.Button(self.root, text="View Reorder Alerts", command=self.view_reorder_alerts).grid(row=8, column=0, columnspan=2, pady=10)
+        tk.Button(self.root, text="Create Reports", command=self.create_reports).grid(row=9, column=0, columnspan=2, pady=10)
+        tk.Button(self.root, text="Exit", command=self.exit_app).grid(row=10, column=0, columnspan=2, pady=10)
+
+    def exit_app(self):
+        if messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
+            self.root.destroy()
+            InventoryManagerUI.instance = None
+
+    def add_new_product(self):
         try:
-            product_id = int(input("Enter product ID (integer): "))
-            product_name = input("Enter product name: ")
-            current_stock = int(input("Enter current stock (integer): "))
-            reorder_point = int(input("Enter reorder point (integer): "))
-            reorder_quantity = int(input("Enter reorder quantity (integer): "))
-            item = Product(product_id, product_name, current_stock, reorder_point, reorder_quantity)
-            storage1.products.append(item)
-            print(f"Product '{product_name}' added successfully.\n")
+            id = self.id_entry.get()
+            name = self.name_entry.get()
+            stock = int(self.stock_entry.get())
+            reorder_level = int(self.reorder_entry.get())
+            lead_days = int(self.lead_time_entry.get())
+            sales_history = list(map(int, self.sales_history_entry.get().split(',')))
+
+            self.manager.add_new_product(id, name, stock, reorder_level, lead_days, sales_history)
+            messagebox.showinfo("Success", "Product successfully added.")
         except ValueError:
-            print("Invalid input. Please enter integers for product ID, current stock, reorder point, and reorder quantity.\n")
+            messagebox.showerror("Error", "Invalid input. Please enter valid numbers for Stock, Reorder Level, and Lead Time.")
 
-        user_input = input("Enter 'check' to view inventory details or 'exit' to quit: ")
-        if user_input.lower() == "exit":
-            break
-        elif user_input.lower() == "check":
-            product_id_check = int(input("Enter product ID to check details: "))
-            found = False
-            for product in storage1.products:
-                if product.product_id == product_id_check:
-                    print(f"Product: {product.name}")
-                    print(f"Current Stock: {product.current_stock}")
-                    suggest_reorder(product)
-                    found = True
-                    break
-            if not found:
-                print("Product not found.")
+    def check_stock_levels(self):
+        id = self.id_entry.get()
+        stock_level = self.manager.get_stock_level(id)
+        if stock_level is not None:
+            messagebox.showinfo("Stock Level", f"Current stock level for product {id}: {stock_level}")
         else:
-            print("Invalid command. Please enter 'check' or 'exit'.\n")
+            messagebox.showerror("Error", "Product not found.")
 
-# Test the application
+    def view_reorder_alerts(self):
+        alerts = self.manager.generate_reorder_alerts()
+        if alerts:
+            alert_message = "\n".join(alerts)
+            messagebox.showinfo("Reorder Alerts", alert_message)
+        else:
+            messagebox.showinfo("Reorder Alerts", "No reorder alerts.")
+
+    def create_reports(self):
+        turnover, stockouts, excess = self.manager.create_reports()
+        report_message = "Inventory Turnover Rates:\n"
+        for product, rate in turnover.items():
+            report_message += f"{product}: {rate:.2f}\n"
+        report_message += f"\nStockout Occurrences: {stockouts}\n"
+        report_message += f"Overstock Costs: {excess}\n"
+
+        messagebox.showinfo("Reports", report_message)
+
+def main():
+    if not InventoryManagerUI.instance:
+        root = tk.Tk()
+        app = InventoryManagerUI(root)
+        root.mainloop()
+
 if __name__ == "__main__":
-    main_interface()
+    main()
